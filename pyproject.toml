@@ -15,6 +15,16 @@ dependencies = [
     "requests>=2.32.3",
 ]
 
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.4",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
 [project.scripts]
 nagios-mcp = "nagios_mcp.__main__:main"
 
