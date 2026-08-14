@@ -10,10 +10,20 @@ license = {text = "Apache-2.0"}
 requires-python = ">=3.12"
 dependencies = [
     "flask>=3.1.1",
-    "mcp[cli]>=1.8.0",
+    "mcp[cli]>=1.8.0,<2",
     "pyyaml>=6.0.2",
     "requests>=2.32.3",
 ]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=8.3.4",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
 
 [project.scripts]
 nagios-mcp = "nagios_mcp.__main__:main"

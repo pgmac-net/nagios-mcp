@@ -44,6 +44,12 @@ logger = logging.getLogger("nagios-mcp-server")
 # Create the server instance
 server = Server("nagios-mcp-server")
 
+# Path used both for the endpoint advertised to SSE clients and for the mount
+# that receives their POSTs. Starlette's Mount matches a prefix, so this must
+# carry a trailing slash or every POST is answered with a 307 redirect.
+MESSAGES_PATH = "/messages/"
+
+
 def load_config(config_path: str) -> Dict[str, Any]:
     """Load configuration from JSON or YAML file"""
     config_file = Path(config_path)
@@ -122,11 +128,15 @@ async def run_stdio():
         )
 
 
-async def run_sse(host: str = "localhost", port: int = 8000):
-    """Run server with sse transport"""
+def build_sse_app() -> Starlette:
+    """Build the Starlette app serving the MCP SSE transport.
+
+    ``MESSAGES_PATH`` is used both for the endpoint advertised to clients and
+    for the mount that receives their POSTs, so the two cannot drift apart.
+    """
 
     # Create SSE Server app
-    sse_transport = SseServerTransport("/messages")
+    sse_transport = SseServerTransport(MESSAGES_PATH)
 
     async def handle_sse(request):
         """Handle SSE connections"""
@@ -152,11 +162,17 @@ async def run_sse(host: str = "localhost", port: int = 8000):
     # Create Starlette routes
     routes = [
         Route("/sse", endpoint=handle_sse, methods=["GET"]),
-        Mount("/messages", app=sse_transport.handle_post_message),
+        Mount(MESSAGES_PATH, app=sse_transport.handle_post_message),
     ]
 
     # Create Starlette app
-    app = Starlette(routes=routes)
+    return Starlette(routes=routes)
+
+
+async def run_sse(host: str = "localhost", port: int = 8000):
+    """Run server with sse transport"""
+
+    app = build_sse_app()
 
     logging.info(f"Server running with SSE transport on http://{host}:{port}")
     logging.info(f"SSE endpoint: http://{host}:{port}/sse")
