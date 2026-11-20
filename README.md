@@ -1,5 +1,6 @@
 # nagios-mcp
-![](https://badge.mcpx.dev?type=server 'MCP Server')
+
+![](https://badge.mcpx.dev?type=server "MCP Server")
 ![PyPI - Version](https://img.shields.io/pypi/v/nagios-mcp)
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FPROSPIRE-TECHNOLOGY-SERVICES%2Fnagios-mcp%2Frefs%2Fheads%2Fmain%2Fpyproject.toml)
 
@@ -34,10 +35,17 @@ nagios_pass: "your_nagios_core_password"
 ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it empty ("")
 ```
 
+### Starting the HTTP server (recommended for network clients)
+
+- Command: `uvx nagios-mcp --config NAGIOS_CONFIG_FILE --transport http --host localhost --port 8000`
+- Serves **stateless streamable HTTP** at `http://localhost:8000/mcp`, and the legacy SSE endpoint at `/sse` alongside it.
+- Stateless means there is no session id and no long-lived stream, so a dropped connection or a server restart needs no client reconnect. Use this transport for clients that reconnect, such as Claude Code (`"type": "http"`, `"url": "http://localhost:8000/mcp"`).
+
 ### Starting the SSE server
 
 - The mcp server by default runs on STDIO transport. If you do not require SSE transport, you can skip this section.
 - Command: `uvx nagios-mcp --config NAGIOS_CONFIG_FILE --transport sse --host localhost --port 8000`
+- SSE keeps a session per connection. A client that reconnects without re-running `initialize` gets `-32602` on every call until it is reconnected by hand; prefer `--transport http`.
 
 ### For Claude Desktop
 
@@ -52,11 +60,7 @@ ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it 
   "mcpServers": {
     "nagios": {
       "command": "uvx",
-      "args": [
-        "nagios-mcp",
-        "--config",
-        "PATH_TO_THE_NAGIOS_CONFIG_FILE",
-      ],
+      "args": ["nagios-mcp", "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"],
     },
   },
 }
@@ -84,13 +88,10 @@ ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it 
 {
   "mcpServers": {
     "nagios": {
-        "command": "uvx",
-        "args": [
-                "nagios-mcp",
-                "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"
-            ],
-        }
-    }
+      "command": "uvx",
+      "args": ["nagios-mcp", "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"],
+    },
+  },
 }
 ```
 
@@ -113,15 +114,12 @@ ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it 
 
 ```jsonc
 {
-    "mcpServers": {
-        "nagios": {
-            "command": "uvx",
-            "args": [
-                "nagios-mcp",
-                "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"
-            ],
-        }
-    }
+  "mcpServers": {
+    "nagios": {
+      "command": "uvx",
+      "args": ["nagios-mcp", "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"],
+    },
+  },
 }
 ```
 
@@ -144,15 +142,12 @@ ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it 
 
 ```jsonc
 {
-    "mcpServers": {
-        "nagios": {
-            "command": "uvx",
-            "args": [
-                "nagios-mcp",
-                "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"
-            ],
-        }
-    }
+  "mcpServers": {
+    "nagios": {
+      "command": "uvx",
+      "args": ["nagios-mcp", "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"],
+    },
+  },
 }
 ```
 
