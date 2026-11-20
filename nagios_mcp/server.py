@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import json
 import logging
 from pathlib import Path
@@ -11,6 +12,7 @@ from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from mcp.server.sse import SseServerTransport
 from mcp.server.stdio import stdio_server
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.applications import Starlette
 from starlette.responses import Response
 from starlette.routing import Mount, Route
@@ -48,6 +50,10 @@ server = Server("nagios-mcp-server")
 # that receives their POSTs. Starlette's Mount matches a prefix, so this must
 # carry a trailing slash or every POST is answered with a 307 redirect.
 MESSAGES_PATH = "/messages/"
+
+# Streamable HTTP endpoint. It is a Route, not a Mount: a Mount would answer
+# "/mcp" with a 307 redirect to "/mcp/".
+MCP_PATH = "/mcp"
 
 
 def load_config(config_path: str) -> Dict[str, Any]:
@@ -128,14 +134,13 @@ async def run_stdio():
         )
 
 
-def build_sse_app() -> Starlette:
-    """Build the Starlette app serving the MCP SSE transport.
+def _sse_routes() -> list:
+    """Routes for the legacy SSE transport.
 
     ``MESSAGES_PATH`` is used both for the endpoint advertised to clients and
     for the mount that receives their POSTs, so the two cannot drift apart.
     """
 
-    # Create SSE Server app
     sse_transport = SseServerTransport(MESSAGES_PATH)
 
     async def handle_sse(request):
@@ -159,14 +164,46 @@ def build_sse_app() -> Starlette:
         # returning empty response to avoid NoneType error
         return Response()
 
-    # Create Starlette routes
-    routes = [
+    return [
         Route("/sse", endpoint=handle_sse, methods=["GET"]),
         Mount(MESSAGES_PATH, app=sse_transport.handle_post_message),
     ]
 
-    # Create Starlette app
-    return Starlette(routes=routes)
+
+def build_sse_app() -> Starlette:
+    """Build the Starlette app serving the MCP SSE transport only."""
+    return Starlette(routes=_sse_routes())
+
+
+def build_http_app() -> Starlette:
+    """Build the Starlette app serving streamable HTTP at /mcp and legacy SSE.
+
+    The streamable HTTP endpoint is stateless: every request is handled on its
+    own, with no session id and no long-lived stream. A client therefore has
+    nothing to lose when the connection drops or the pod restarts, which is
+    what breaks the SSE transport (a reconnecting client gets a new session
+    that it never initializes). SSE stays mounted while clients migrate.
+    """
+
+    session_manager = StreamableHTTPSessionManager(
+        app=server,
+        stateless=True,
+        json_response=True,
+    )
+
+    class McpEndpoint:  # pylint: disable=too-few-public-methods
+        """ASGI app for /mcp (a class so Starlette does not wrap it as a request handler)."""
+
+        async def __call__(self, scope, receive, send):
+            await session_manager.handle_request(scope, receive, send)
+
+    @contextlib.asynccontextmanager
+    async def lifespan(_app):
+        async with session_manager.run():
+            yield
+
+    routes = [Route(MCP_PATH, endpoint=McpEndpoint()), *_sse_routes()]
+    return Starlette(routes=routes, lifespan=lifespan)
 
 
 async def run_sse(host: str = "localhost", port: int = 8000):
@@ -178,6 +215,21 @@ async def run_sse(host: str = "localhost", port: int = 8000):
     logging.info(f"SSE endpoint: http://{host}:{port}/sse")
 
     # Configure and run uvicorn
+    config = uvicorn.Config(app=app, host=host, port=port, log_level="info")
+
+    server_instance = uvicorn.Server(config)
+    await server_instance.serve()
+
+
+async def run_http(host: str = "localhost", port: int = 8000):
+    """Run server with streamable HTTP (and legacy SSE) transport"""
+
+    app = build_http_app()
+
+    logging.info("Server running with HTTP transport on http://%s:%s", host, port)
+    logging.info("Streamable HTTP endpoint: http://%s:%s%s", host, port, MCP_PATH)
+    logging.info("Legacy SSE endpoint: http://%s:%s/sse", host, port)
+
     config = uvicorn.Config(app=app, host=host, port=port, log_level="info")
 
     server_instance = uvicorn.Server(config)
@@ -197,7 +249,7 @@ async def main():
         "--transport",
         "-t",
         type=str,
-        choices=["stdio", "sse"],
+        choices=["stdio", "sse", "http"],
         default="stdio",
         help="Transport method to use (default: stdio)",
     )
@@ -205,13 +257,13 @@ async def main():
         "--host",
         type=str,
         default="localhost",
-        help="Host to bind to for SSE transport (default: localhost)",
+        help="Host to bind to for the sse and http transports (default: localhost)",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=8000,
-        help="Port to bind to for SSE transport (default: 8000)",
+        help="Port to bind to for the sse and http transports (default: 8000)",
     )
 
     args = parser.parse_args()
@@ -236,7 +288,9 @@ async def main():
         print("Example: uvx nagios-mcp --config nagios_config.yaml")
         return 1
 
-    if args.transport == "sse":
+    if args.transport == "http":
+        await run_http(args.host, args.port)
+    elif args.transport == "sse":
         await run_sse(args.host, args.port)
     else:
         await run_stdio()

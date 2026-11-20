@@ -34,10 +34,17 @@ nagios_pass: "your_nagios_core_password"
 ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it empty ("")
 ```
 
+### Starting the HTTP server (recommended for network clients)
+
+- Command: `uvx nagios-mcp --config NAGIOS_CONFIG_FILE --transport http --host localhost --port 8000`
+- Serves **stateless streamable HTTP** at `http://localhost:8000/mcp`, and the legacy SSE endpoint at `/sse` alongside it.
+- Stateless means there is no session id and no long-lived stream, so a dropped connection or a server restart needs no client reconnect. Use this transport for clients that reconnect, such as Claude Code (`"type": "http"`, `"url": "http://localhost:8000/mcp"`).
+
 ### Starting the SSE server
 
 - The mcp server by default runs on STDIO transport. If you do not require SSE transport, you can skip this section.
 - Command: `uvx nagios-mcp --config NAGIOS_CONFIG_FILE --transport sse --host localhost --port 8000`
+- SSE keeps a session per connection. A client that reconnects without re-running `initialize` gets `-32602` on every call until it is reconnected by hand; prefer `--transport http`.
 
 ### For Claude Desktop
 
