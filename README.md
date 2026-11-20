@@ -1,5 +1,6 @@
 # nagios-mcp
-![](https://badge.mcpx.dev?type=server 'MCP Server')
+
+![](https://badge.mcpx.dev?type=server "MCP Server")
 ![PyPI - Version](https://img.shields.io/pypi/v/nagios-mcp)
 ![Python Version from PEP 621 TOML](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FPROSPIRE-TECHNOLOGY-SERVICES%2Fnagios-mcp%2Frefs%2Fheads%2Fmain%2Fpyproject.toml)
 
@@ -59,11 +60,7 @@ ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it 
   "mcpServers": {
     "nagios": {
       "command": "uvx",
-      "args": [
-        "nagios-mcp",
-        "--config",
-        "PATH_TO_THE_NAGIOS_CONFIG_FILE",
-      ],
+      "args": ["nagios-mcp", "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"],
     },
   },
 }
@@ -91,13 +88,10 @@ ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it 
 {
   "mcpServers": {
     "nagios": {
-        "command": "uvx",
-        "args": [
-                "nagios-mcp",
-                "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"
-            ],
-        }
-    }
+      "command": "uvx",
+      "args": ["nagios-mcp", "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"],
+    },
+  },
 }
 ```
 
@@ -120,15 +114,12 @@ ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it 
 
 ```jsonc
 {
-    "mcpServers": {
-        "nagios": {
-            "command": "uvx",
-            "args": [
-                "nagios-mcp",
-                "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"
-            ],
-        }
-    }
+  "mcpServers": {
+    "nagios": {
+      "command": "uvx",
+      "args": ["nagios-mcp", "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"],
+    },
+  },
 }
 ```
 
@@ -151,15 +142,12 @@ ca_cert_path: "path_to_your_ssl_cert" # if the url is https, otherwise leave it 
 
 ```jsonc
 {
-    "mcpServers": {
-        "nagios": {
-            "command": "uvx",
-            "args": [
-                "nagios-mcp",
-                "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"
-            ],
-        }
-    }
+  "mcpServers": {
+    "nagios": {
+      "command": "uvx",
+      "args": ["nagios-mcp", "--config", "PATH_TO_THE_NAGIOS_CONFIG_FILE"],
+    },
+  },
 }
 ```
 
